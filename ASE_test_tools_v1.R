@@ -20,12 +20,12 @@ abline(a = 0, b = 1, col = "blue")
 #quotation marks (""). The default binomial parameter to test is 0.5, while the default FDR is 0.05.
 #The function will return 
 #the entire binomial test output.
-ASE.binom.test<-function(filepath, output_columns, eh1 = "refCount", eh2 = "altCount", prob = 0.5, FDR = 0.05){
+ASE.binom.test<-function(filepath, output_columns, eh1 = "refCount", eh2 = "altCount", prob = 0.5, FDR = 0.10){
   dat<-read.table(filepath, header = TRUE)
   output<-dat[,output_columns]
   eh1.zero.ind <- which(dat[eh1] == 0)
   eh2.zero.ind <- which(dat[eh2] == 0)
-  #dat[eh1.zero.ind,eh1]<-.1 (possibly don't need these lines since no zeros in total counts greater than 8)
+  #dat[eh1.zero.ind,eh1]<-.1 (WILL NEED THIS EVENTUALLY)
   #dat[eh2.zero.ind,eh2]<-.1
   for (i in 1:nrow(dat)){
     if (dat$totalCount[i]>8){
@@ -33,24 +33,37 @@ ASE.binom.test<-function(filepath, output_columns, eh1 = "refCount", eh2 = "altC
       output$p.val[i]<-test$p.value
     }
     else{output$p.val[i]<-NA}
-    #if (output$p.val[i]<0.05){
-    #  output$outlier[i]<-TRUE
-    #}
-    #else{output$outlier[i]<-FALSE}
   }
   #Carry out Benjamini-Hochberg procedure to get adjusted p-values
+  #return(output)
   ordered.pvals<-sort(output$p.val)
-  m = length(ordered.pvals)
-  for (i in 1:nrow(dat)){
-    output$adj.pval[i]<-ordered.pvals[m]
+  ####return(ordered.pvals)
+  m <- length(ordered.pvals)
+  #c <- FDR/m
+  #for (i in 1:nrow(dat)){
+  #  for(j in m:1){
+  #    if (ordered.pvals[j]<=(j*c)){
+  #      flag <-j
+  #    }
+  #  }
+  #  output$adj.pval<-ordered.pvals[flag]
+  #}
+  for (i in 1:nrow(output)){
+    candidate.pvals<-numeric(m)
     for (j in m:1){
-      if (output$adj.pval[i]>=ordered.pvals[j]){
-        output$adj.pval[i]<-ordered.pvals[j]*(m/j)
+      if (ordered.pvals[j]>=ordered.pvals[i]){
+        candidate.pvals[i]<-ordered.pvals[j]*(m/j)
       }
-      else{break}
+      #else{continue}
     }
+    candidate.pvals<-candidate.pvals[which(candidate.pvals>0)]
+    output$adj.pval[i]<-min(candidate.pvals)
+    if (output$adj.pval[i]<0.05){
+      output$outlier[i]<-TRUE
+    }
+    else{output$outlier[i]<-FALSE}
   }
-  return(output)
+  #return(output)
 }
 i = 77435
 eh1 = "refCount"
